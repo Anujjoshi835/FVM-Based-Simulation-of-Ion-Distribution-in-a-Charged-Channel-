@@ -1,0 +1,90 @@
+function [cstar, xstar] = project3A_FVM_solver(Pe, alpha, beta, N, scheme, tol, maxiter)
+    if nargin < 6, tol = 1e-8; end
+    if nargin < 7, maxiter = 200; end
+
+    dx_star = 1/N;                        
+    xstar = ((1:N)' - 0.5)*dx_star;
+    ustar_e = 1; ustar_w = 1;         
+    switch lower(scheme)
+        case 'upwind'
+            FE_e = 0;
+            Fp_e = 1;       
+            Fw_w = 1;
+            Fp_w = 0; 
+
+        case 'central'
+            FE_e = 0.5;
+            Fp_e = 0.5;   
+            Fw_w = 0.5;
+            Fp_w = 0.5;    
+        otherwise
+            error('scheme must be ''upwind'' or ''central''');
+    end
+
+    cstar_old = ones(N,1);   % initial guess        
+
+    for iter = 1:maxiter
+
+       
+        ST = -beta*alpha ./ (alpha + cstar_old).^2;                 
+        Sc = (-beta*cstar_old./(alpha+cstar_old)) - ST.*cstar_old;    
+
+        A = sparse(N,N,3*N);
+        Q = zeros(N,1);
+
+        for i = 1:N
+            if i == 1
+                AcE = ustar_e*FE_e;
+                AcP = ustar_e*Fp_e;
+                Qc  = -ustar_w*1;                    
+
+                AdE = 1/(Pe*dx_star);
+                AdP = -3/(Pe*dx_star) + ST(i)*dx_star;
+                Qd  = 2/(Pe*dx_star) + Sc(i)*dx_star;
+
+                A(i,i)   = AcP - AdP;
+                A(i,i+1) = AcE - AdE;
+                Q(i)     = Qd - Qc;
+            elseif i == N
+                AcP = ustar_e*1 - ustar_w*Fp_w; % cannot use F_
+                AcW = -ustar_w*Fw_w;
+
+                AdP = -1/(Pe*dx_star) + ST(i)*dx_star;
+                AdW = 1/(Pe*dx_star);
+                Qd  = Sc(i)*dx_star;
+
+                A(i,i)   = AcP - AdP;
+                A(i,i-1) = AcW - AdW;
+                Q(i)     = Qd;        
+            else
+                AcE = ustar_e*FE_e;
+                AcP = ustar_e*Fp_e - ustar_w*Fp_w;
+                AcW = -ustar_w*Fw_w;
+
+                AdE = 1/(Pe*dx_star);
+                AdP = -2/(Pe*dx_star) + ST(i)*dx_star;
+                AdW = 1/(Pe*dx_star);
+                Qd  = Sc(i)*dx_star;
+
+                A(i,i)   = AcP - AdP;
+                A(i,i+1) = AcE - AdE;
+                A(i,i-1) = AcW - AdW;
+                Q(i)     = Qd;
+            end
+        end
+
+        cstar = A\Q;
+
+        if norm(cstar - cstar_old, Inf) < tol
+            cstar_old = cstar;
+            break;
+        end
+        cstar_old = cstar;
+    end
+
+    cstar = cstar_old;
+
+    if iter == maxiter
+        warning('Picard iteration did not converge within %d iterations (scheme=%s, Pe=%g).', maxiter, scheme, Pe);
+    end
+end

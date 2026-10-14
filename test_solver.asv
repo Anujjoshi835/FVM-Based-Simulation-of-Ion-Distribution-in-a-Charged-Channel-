@@ -1,0 +1,61 @@
+clear; clc; close all;
+N = 200;               
+% Plot 1
+alpha_fixed = 0.5;
+beta_fixed  = 2.0;
+Pe_list = [1, 5, 20, 100, 150];
+
+figure; hold on;
+colors = lines(length(Pe_list));
+for k = 1:length(Pe_list)
+    Pe = Pe_list(k);
+
+    [c_upwind, x_up] = project3A_FVM_solver(Pe, alpha_fixed, beta_fixed, N, 'upwind');
+    [c_central, x_ce] = project3A_FVM_solver(Pe, alpha_fixed, beta_fixed, N, 'central');
+
+    plot(x_up, c_upwind, '-',  'Color', colors(k,:), 'DisplayName', sprintf('Pe=%g (upwind)', Pe));
+    plot(x_ce, c_central, '--', 'Color', colors(k,:), 'DisplayName', sprintf('Pe=%g (central)', Pe));
+end
+xlabel('x_*'); ylabel('c_*');
+title(sprintf('c_* vs x_* for various Pe (\\alpha=%.2g, \\beta=%.2g)', alpha_fixed, beta_fixed));
+legend show; grid on;
+
+%% ---- Plot 2: effect of beta (fixed Pe, alpha), upwind scheme ----
+Pe_fixed = 20;
+beta_list = [0.5, 2, 5, 10];
+
+figure; hold on;
+colors = lines(length(beta_list));
+for k = 1:length(beta_list)
+    beta = beta_list(k);
+    [c, x] = project3A_FVM_solver(Pe_fixed, alpha_fixed, beta, N, 'upwind');
+    plot(x, c, 'Color', colors(k,:), 'DisplayName', sprintf('\\beta=%g', beta));
+end
+xlabel('x_*'); ylabel('c_*');
+title(sprintf('c_* vs x_* for various \\beta (Pe=%g, \\alpha=%.2g, upwind)', Pe_fixed, alpha_fixed));
+legend show; grid on;
+
+%% ---- Plot 3: effect of alpha (fixed Pe, beta), upwind scheme ----
+alpha_list = [0.1, 0.5, 1, 5];
+
+figure; hold on;
+colors = lines(length(alpha_list));
+for k = 1:length(alpha_list)
+    alpha = alpha_list(k);
+    [c, x] = project3A_FVM_solver(Pe_fixed, alpha, beta_fixed, N, 'upwind');
+    plot(x, c, 'Color', colors(k,:), 'DisplayName', sprintf('\\alpha=%g', alpha));
+end
+xlabel('x_*'); ylabel('c_*');
+title(sprintf('c_* vs x_* for various \\alpha (Pe=%g, \\beta=%.2g, upwind)', Pe_fixed, beta_fixed));
+legend show; grid on;
+
+%% ---- Plot 4: upwind vs central, single case, zoomed to see scheme difference ----
+[c_upwind, x_up] = project3A_FVM_solver(50, 0.5, 3, N, 'upwind');
+[c_central, x_ce] = project3A_FVM_solver(50, 0.5, 3, N, 'central');
+
+figure;
+plot(x_up, c_upwind, 'b-', 'DisplayName', 'Upwind'); hold on;
+plot(x_ce, c_central, 'r--', 'DisplayName', 'Central');
+xlabel('x_*'); ylabel('c_*');
+title('Upwind vs Central Difference Scheme Comparison (Pe=50, \alpha=0.5, \beta=3)');
+legend show; grid on;
